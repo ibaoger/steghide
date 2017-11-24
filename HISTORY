@@ -1,3 +1,13 @@
+steghide 0.4.5 :
+================
+
+* internationalization (GNU gettext)
+
+* german locale
+
+* french locale
+
+
 steghide 0.4.4 :
 ================
 
