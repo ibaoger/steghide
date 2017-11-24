@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.3 - a steganography program
+ * steghide 0.4.4 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -177,7 +177,7 @@ void bmp_readfile (CVRFILE *file)
 					exit_err ("premature end of bmp file \"%s\".", file->filename) ;
 				}
 			}
-			bufsetbyte (file->cvrbuflhead, bufpos, c) ;
+			bufsetbyte (file->cvrdata, bufpos, c) ;
 			bufpos++ ;
 			posinline++ ;
 		}
@@ -213,7 +213,7 @@ void bmp_writefile (CVRFILE *file)
 
 	while (line < file->headers->bmp.bmxh.Height) {
 		while (posinline < file->headers->bmp.bmxh.BitCount * file->headers->bmp.bmxh.Width / 8) {
-			putc (bufgetbyte (file->cvrbuflhead, bufpos), file->stream) ;
+			putc (bufgetbyte (file->cvrdata, bufpos), file->stream) ;
 			bufpos++ ;
 			posinline++ ;
 		}
