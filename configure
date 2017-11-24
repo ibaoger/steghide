@@ -1348,7 +1348,7 @@ fi
 
 # Define the identity of the package.
 PACKAGE=steghide
-VERSION=0.4.6
+VERSION=0.4.6b
 
 cat >>confdefs.h <<EOF
 #define PACKAGE "$PACKAGE"
