@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -27,8 +27,6 @@
 #define ACTN_LICENSE	4
 #define ACTN_HELP		5
 
-#define PASSPHRASE_MAXLEN	512
-
 #define INTERVAL_DEFAULT	10
 
 #define PROGNAME	"steghide"
@@ -38,5 +36,8 @@ extern char *args_passphrase ;
 extern char *args_fn_cvr ;
 extern char *args_fn_stg ;
 extern char *args_fn_pln ;
+extern int args_force ;
+extern int args_quiet ;
+extern int args_verbose ;
 
 #endif /* ndef SH_MAIN_H */

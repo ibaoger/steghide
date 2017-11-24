@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -131,5 +131,7 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 void dmtd_reset (unsigned int dmtd, DMTDINFO dmtdinfo, unsigned long resetpos) ;
 unsigned long dmtd_nextpos (void) ;
 #endif
+unsigned long calc_ubfirstplnpos (int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase) ;
+void setmaxilen (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos) ;
 
 #endif /* ndef SH_STEGANO_H */

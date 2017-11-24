@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -38,6 +38,9 @@ static int nstgbits (void) ;
 void dmtd_reset (unsigned int dmtd, DMTDINFO dmtdinfo, unsigned long resetpos) ;
 unsigned long dmtd_nextpos (void) ;
 #endif
+static unsigned int findmaxilen_cnsti (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos) ;
+static unsigned int findmaxilen_prndi (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos) ;
+static int simprndi_ok (unsigned long cvrbytes, unsigned long plnbits, unsigned long firstplnpos, unsigned int imlen) ;
 
 static unsigned int curdmtd_dmtd ;
 static DMTDINFO curdmtd_dmtdinfo ;
@@ -75,7 +78,7 @@ void embeddata (BUFFER *cvrbuflhead, unsigned long firstcvrpos, BUFFER *plnbuflh
 		cvrpos_byte = dmtd_nextpos () ;
 
 		if ((cvrpos_byte >= buflength (cvrbuflhead)) && (plnpos_byte < buflength (plnbuflhead))) {
-			perr (ERR_CVRTOOSHORT) ;
+			exit_err ("the cover file is too short to embed the plain data. try a smaller interval length.") ;
 		}
 	}
 
@@ -125,7 +128,7 @@ BUFFER *extractdata (BUFFER *stgbuflhead, unsigned long firststgpos)
 		stgpos_byte = dmtd_nextpos() ;
 
 		if ((stgpos_byte >= buflength (stgbuflhead)) && (plnpos_byte < size)) {
-			perr (ERR_STGTOOSHORT) ;
+			exit_err ("the stego file is to short to contain the plain data (file corruption ?).") ;
 		}
 	}
 
@@ -140,9 +143,7 @@ void embedsthdr (BUFFER *cvrbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, char
 	unsigned int bitval = 0 ;
 	unsigned long cvrbytepos = 0 ;
 
-	if ((hdrbuf = calloc (STHDR_NBYTES_BLOWFISH, 1)) == NULL) {
-		perr (ERR_MEMALLOC) ;
-	}
+	hdrbuf = s_calloc (STHDR_NBYTES_BLOWFISH, 1) ;
 
 	/* assemble bits that make up sthdr in a buffer */
 	bit = cp_bits_to_buf_le (hdrbuf, bit, (unsigned long) nbits (sthdr.nbytesplain), SIZE_NBITS_NBYTESPLAIN) ;
@@ -200,7 +201,7 @@ void embedsthdr (BUFFER *cvrbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, char
 		bufsetbit (cvrbuflhead, cvrbytepos, 0, bitval) ;
 		if (((cvrbytepos = dmtd_nextpos()) >= buflength (cvrbuflhead)) &&
 		   bit < sthdrbuflen) {
-			perr (ERR_CVRTOOSHORT) ;
+			exit_err ("the cover file is too short to embed the stego header. use another cover file.") ;
 		}
 	}
 
@@ -238,7 +239,7 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 		hdrbuf[bit / 8] |= bitval << (bit % 8) ;
 		if (((cvrbytepos = dmtd_nextpos()) >= buflength (stgbuflhead)) &&
 		   bit < hdrbuflen * 8) {
-			perr (ERR_STGTOOSHORT) ;
+			exit_err ("the stego file is too short to contain the stego header (file corruption ?).") ;
 		}
 	}
 	oldcvrbytepos[bit] = cvrbytepos ;
@@ -271,7 +272,7 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 		break ;
 
 		default:
-			perr (ERR_STHDRDMTDUNKNOWN) ;
+			exit_err ("the distribution method saved in the stego header is unknown (file corruption ?).") ;
 		break ;
 	}
 
@@ -279,7 +280,7 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 	if (tmp) {
 		bit = cp_bits_from_buf_le (hdrbuf, bit, &tmp, SIZE_MASK) ;
 		if (tmp == 0) {
-			perr (ERR_MASKZERO) ;
+			exit_err ("the mask saved in the stego header is zero (file corruption ?).") ;
 		}
 		sthdr.mask = (unsigned int) tmp ;
 	}
@@ -290,13 +291,13 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 	bit = cp_bits_from_buf_le (hdrbuf, bit, &tmp, SIZE_COMPRESSION) ;
 	sthdr.compression = (unsigned int) tmp ;
 	if (sthdr.compression != COMPR_NONE) {
-		perr (ERR_COMPRNOTIMPL) ;
+		exit_err ("the plain data is compressed. this is not implemented yet (file corruption ?).") ;
 	}
 
 	bit = cp_bits_from_buf_le (hdrbuf, bit, &tmp, SIZE_CHECKSUM) ;
 	sthdr.checksum = (unsigned int) tmp ;
 	if (sthdr.checksum != CKSUM_NONE) {
-		perr (ERR_CKSUMNOTIMPL) ;
+		exit_err ("the stego file contains a checksum. this is not implemented yet (file corruption ?).") ;
 	}
 
 	/* set *firstplnpos */
@@ -412,3 +413,153 @@ unsigned long dmtd_nextpos (void)
 	return curdmtd_curpos ;
 }
 
+void setmaxilen (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos)
+{
+	unsigned int maxilen = 0 ;
+
+	switch (sthdr.dmtd) {
+		case DMTD_CNSTI:
+		maxilen = findmaxilen_cnsti (cvrbytes, plnbytes, firstplnpos) ;
+		if (maxilen > DMTD_CNSTI_MAX_ILEN) {
+			maxilen = DMTD_CNSTI_MAX_ILEN ;
+		}
+		sthdr.dmtdinfo.cnsti.interval_len = maxilen ;
+		break ;
+
+		case DMTD_PRNDI:
+		maxilen = findmaxilen_prndi (cvrbytes, plnbytes, firstplnpos) ;
+		if (maxilen > DMTD_PRNDI_MAX_IMLEN) {
+			maxilen = DMTD_PRNDI_MAX_IMLEN ;
+		}
+		sthdr.dmtdinfo.prndi.interval_maxlen = maxilen ;
+		break;
+
+		default:
+		assert (0) ;
+		break ;
+	}
+
+	return ;
+}
+
+static unsigned int findmaxilen_cnsti (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos)
+{
+	unsigned long plnbits = 0, restcvrbytes = 0 ;
+
+	plnbits = 8 * plnbytes ;
+	restcvrbytes = cvrbytes - firstplnpos ;
+
+	return (restcvrbytes - plnbits) / (plnbits - 1) ;
+}
+
+static unsigned int findmaxilen_prndi (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos)
+{
+	unsigned long plnbits = 0, restcvrbytes = 0 ;
+	unsigned int est_imlen = 0 ;
+	int est_ok[2] = { 0, 0 } ;
+
+	plnbits = 8 * plnbytes ;
+	restcvrbytes = cvrbytes - firstplnpos ;
+
+	est_imlen = 2 * ((cvrbytes - plnbits) / (plnbits - 1)) ;
+
+	est_ok[0] = simprndi_ok (cvrbytes, plnbits, firstplnpos, est_imlen) ;
+	est_ok[1] = simprndi_ok (cvrbytes, plnbits, firstplnpos, est_imlen + 1) ;
+
+	while (!(est_ok[0] && !est_ok[1])) {
+		if (est_ok[0] && est_ok[1]) {
+			est_imlen++ ;
+			est_ok[0] = est_ok[1] ;
+			est_ok[1] = simprndi_ok (cvrbytes, plnbits, firstplnpos, est_imlen + 1) ;
+		}
+
+		else if (!est_ok[0] && !est_ok[1]) {
+			est_imlen-- ;
+			est_ok[1] = est_ok[0] ;
+			est_ok[0] = simprndi_ok (cvrbytes, plnbits, firstplnpos, est_imlen) ;
+		}
+
+		else {
+			assert (0) ;
+		}
+	}
+
+	return est_imlen ;
+}
+
+static int simprndi_ok (unsigned long cvrbytes, unsigned long plnbits, unsigned long firstplnpos, unsigned int imlen)
+{	
+	unsigned long plnpos_bit = 0 ;
+	unsigned long cvrpos_byte = firstplnpos ;
+	int retval = 1 ;
+	DMTDINFO simdmtdinfo ;
+
+	simdmtdinfo.prndi.seed = sthdr.dmtdinfo.prndi.seed ;
+	simdmtdinfo.prndi.interval_maxlen = imlen ;
+
+	dmtd_reset (DMTD_PRNDI, simdmtdinfo, cvrpos_byte) ;
+
+	while (plnpos_bit < plnbits) {
+		plnpos_bit++ ;
+		cvrpos_byte = dmtd_nextpos () ;
+
+		if ((cvrpos_byte >= cvrbytes) && (plnpos_bit < plnbits)) {
+			retval = 0 ;
+			break ;
+		}
+	}
+
+	return retval ;
+}
+
+/* calculates an upper bound for the first postion of a plain data bit in the cover file
+   by simulating the sthdr embedding (with maximal values for the interval length) */
+unsigned long calc_ubfirstplnpos (int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase)
+{
+	unsigned int bit = 0, sthdrbuflen = 0 ;
+	unsigned long cvrbytepos = 0 ;
+
+	if (enc) {
+		bit = STHDR_NBYTES_BLOWFISH * 8 ;
+	}
+	else {
+		bit += SIZE_NBITS_NBYTESPLAIN ;
+		bit += nbits (sthdr.nbytesplain) ;
+	
+		bit += SIZE_DMTD ;
+		switch (sthdr.dmtd) {
+			case DMTD_CNSTI:
+				bit += SIZE_DMTDINFO_CNSTI_NBITS_ILEN ;
+				bit += MAXSIZE_DMTDINFO_CNSTI_ILEN ;
+			break ;
+
+			case DMTD_PRNDI:
+				bit += SIZE_DMTDINFO_PRNDI_SEED ;
+				bit += SIZE_DMTDINFO_PRNDI_NBITS_IMLEN ;
+				bit += MAXSIZE_DMTDINFO_PRNDI_IMLEN ;
+			break ;
+
+			default:
+			assert (0) ;
+			break ;
+		}
+
+		bit += SIZE_MASKUSED ;
+		if (sthdr.mask != DEFAULTMASK) {
+			bit += SIZE_MASK ;
+		}
+
+		bit += SIZE_ENCRYPTION ;	
+		bit += SIZE_COMPRESSION ;
+		bit += SIZE_CHECKSUM ;
+	}
+
+	/* embed the buffer */
+	sthdrbuflen = bit ;
+	dmtd_reset (dmtd, dmtdinfo, 0) ;
+	for (bit = 0 ; bit < sthdrbuflen ; bit++) {
+		cvrbytepos = dmtd_nextpos () ;
+	}
+
+	return cvrbytepos ;
+}

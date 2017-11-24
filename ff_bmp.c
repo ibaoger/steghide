@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -45,11 +45,11 @@ void bmp_readheaders (CVRFILE *file)
 		file->headers->bmp.bmxh.Planes = read16_le (file->stream) ;
 		file->headers->bmp.bmxh.BitCount = read16_le (file->stream) ;
 		if ((file->headers->bmp.bmxh.Compression = read32_le (file->stream)) != BMP_BI_RGB) {
-			if (args_action == ACTN_EMBED) {
-				perr (ERR_CVRBMPWITHCOMPR) ;
+			if (file->filename == NULL) {
+				exit_err ("the bitmap data from standard input is compressed which is not supported.") ;
 			}
-			else if (args_action == ACTN_EXTRACT) {
-				perr (ERR_STGBMPWITHCOMPR) ;
+			else {
+				exit_err ("the bitmap data in \"%s\" is compressed which is not supported.", file->filename) ;
 			}
 		}
 		file->headers->bmp.bmxh.SizeImage = read32_le (file->stream) ;
@@ -67,12 +67,13 @@ void bmp_readheaders (CVRFILE *file)
 		break ;
 
 		default:
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_CVRUNSUPBMPFILE) ;
+		if (file->filename == NULL) {
+			exit_err ("the bmp data from standard input has a format that is not supported.") ;
 		}
-		else if (args_action == ACTN_EXTRACT) {
-			perr (ERR_STGUNSUPBMPFILE) ;
+		else {
+			exit_err ("the bmp file \"%s\" has a format that is not supported.", file->filename) ;
 		}
+		break ;
 	}
 
 	if (file->headers->bmp.bmxh.BitCount == 24) {
@@ -85,9 +86,7 @@ void bmp_readheaders (CVRFILE *file)
 
 		file->unsupdata1len = file->headers->bmp.bmfh.bfOffBits - (BMP_SIZE_BMFILEHEADER + file->headers->bmp.bmxh.Size) ;
 
-		if ((file->unsupdata1 = malloc (file->unsupdata1len)) == NULL) {
-			perr (ERR_MEMALLOC) ;
-		}
+		file->unsupdata1 = s_malloc (file->unsupdata1len) ;
 
 		ptrunsupdata1 = file->unsupdata1 ;
 		for (i = 0 ; i < file->unsupdata1len ; i++) {
@@ -96,11 +95,11 @@ void bmp_readheaders (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_CVRREAD) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while reading the bmp headers from standard input.") ;
 		}
-		else if (args_action == ACTN_EXTRACT) {
-			perr (ERR_STGREAD) ;
+		else {
+			exit_err ("an error occured while reading the bmp headers of the file \"%s\".", file->filename) ;
 		}
 	}
 
@@ -150,11 +149,11 @@ void bmp_writeheaders (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_STGWRITE) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while writing the bmp headers to standard output.") ;
 		}
 		else {
-			assert (0) ;
+			exit_err ("an error occured while writing the bmp headers to the file \"%s\".", file->filename) ;
 		}
 	}
 
@@ -166,10 +165,19 @@ void bmp_readfile (CVRFILE *file)
 {
 	unsigned long posinline = 0, line = 0 ;
 	unsigned long bufpos = 0 ;
+	int c = EOF ;
 
 	while (line < file->headers->bmp.bmxh.Height) {
 		while (posinline < file->headers->bmp.bmxh.BitCount * file->headers->bmp.bmxh.Width / 8) {
-			bufsetbyte (file->cvrbuflhead, bufpos, getc (file->stream)) ;
+			if ((c = getc (file->stream)) == EOF) {
+				if (file->filename == NULL) {
+					exit_err ("premature end of bmp data from standard input.") ;
+				}
+				else {
+					exit_err ("premature end of bmp file \"%s\".", file->filename) ;
+				}
+			}
+			bufsetbyte (file->cvrbuflhead, bufpos, c) ;
 			bufpos++ ;
 			posinline++ ;
 		}
@@ -184,11 +192,11 @@ void bmp_readfile (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_CVRREAD) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while reading the bitmap data from standard input.") ;
 		}
-		else if (args_action == ACTN_EXTRACT) {
-			perr (ERR_STGREAD) ;
+		else {
+			exit_err ("an error occured while reading the bitmap data of the file \"%s\".", file->filename) ;
 		}
 	}
 	
@@ -220,11 +228,11 @@ void bmp_writefile (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_STGWRITE) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while writing the bitmap data to standard output.") ;
 		}
 		else {
-			assert (0) ;
+			exit_err ("an error occured while writing the bitmap data to the file \"%s\".", file->filename) ;
 		}
 	}
 

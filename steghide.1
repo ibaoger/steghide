@@ -1,5 +1,5 @@
-.\" Steghide 0.4.1 man page
-.TH steghide 1 "4 Nov 2001"
+.\" Steghide 0.4.2 man page
+.TH steghide 1 "26 Nov 2001"
 .SH NAME
 steghide \- a steganography program
 .SH SYNOPSIS
@@ -22,8 +22,7 @@ format of the plain file.
 
 The plain data can be encrypted before embedding. The encryption algorithm
 blowfish is used together with the hash algorithm MD5 (to create a key for
-blowfish from the passphrase). There is no restriction on the length of the
-passphrase.
+blowfish from the passphrase).
 
 .SH COMMANDS
 In this section the commands for steghide are listed. The first argument must
@@ -35,12 +34,12 @@ extract commands. For a detailed description of these arguments see section
 The embed command embeds the plain file in the cover file, resulting in the
 stego file. This command needs the following arguments: the name of the cover
 file (-cf), the name of the plain file (-pf), a name for the stego file that
-will be created (-sf) and a passphrase (-p).
+will be created (-sf).
 .TP
 .B "extract, --extract"
 The extract command extracts the plain data from a stego file. This command
 needs the following arguments: the name of the stego file (-sf), the name of
-the plain file that will be created (-pf) and the passphrase (-p).
+the plain file that will be created (-pf).
 .TP
 .B "version, --version"
 Displays a short version information. No arguments required.
@@ -52,33 +51,6 @@ Displays steghide's license. No arguments required.
 Displays a help screen. No arguments required.
 
 .SH ARGUMENTS
-.TP
-.B "-d, --distribution"
-This argument defines the method that is used to calculate the postions of the
-hidden bits in the cover/stego file. You can choose among two different
-methods: a constant interval length between two hidden bits (this method is
-called "cnsti") and a pseudo-random interval length between two hidden bits
-(this method is called "prndi").
-
-This argument can only be used with the embed command.
-
-To use the cnsti method you have to pass the following to steghide:
-.B -d cnsti <n>
-where <n> is the interval length you wish to use, i.e. the number of bytes
-(in the cover file) between two bytes that each contain a hidden bit.
-
-Supplying the following argument makes steghide use the prndi method:
-.B -d prndi <n>
-where <n> is the
-.B maximum
-interval length. The average interval length (using the prndi method) will be
-approximately the half of the maximum interval length.
-
-Usually you will not need to use the -d argument as it defaults to prndi 20,
-which is a pretty good choice. If you have problems with a plain file that is
-too long for the cover file you can use this argument to make the plain file
-fit into the cover file (by supplying prndi <n> where <n> is less than 20).
-
 .TP
 .B "-pf, --plainfile"
 This argument can be used with the embed and the extract command. When used
@@ -108,8 +80,12 @@ This argument can only be used with the embed command.
 .TP
 .B "-sf, --stegofile"
 Defines the file that will be used as stego file. When this argument is used
-with the embed command a file of that name will be created. When used with the
+with the embed command, a file of that name will be created. When used with the
 extract command the file must already exist and contain an embedded message.
+
+The file format of the cover file (and the stego file) is detected automatically
+based on header information (the extension is not relevant). The current version
+of steghide supports BMP, WAV and AU files.
 
 .TP
 .B "-p, --passphrase"
@@ -117,7 +93,56 @@ Use the string that is following this argument as the passphrase. If your
 passphrase is more that one word long you have to enclose it in quotes, e.g.
 -p "a very long passphrase".
 
-The passphrase is mandatory for the embed and the extract command.
+If the passphrase is not given with the -p argument, a prompt to enter the
+passphrase will be displayed.
+
+.TP
+.B "-d, --distribution"
+This argument defines the method that is used to calculate the postions of the
+hidden bits in the cover/stego file. You can choose among two different
+methods: a constant interval length between two hidden bits (this method is
+called "cnsti") and a pseudo-random interval length between two hidden bits
+(this method is called "prndi").
+
+This argument can only be used with the embed command.
+
+To use the cnsti method you have to pass the following to steghide:
+.B -d cnsti <n>
+where <n> is the interval length you wish to use, i.e. the number of bytes
+(in the cover file) between two bytes that each contain a hidden bit.
+
+Supplying the following argument makes steghide use the prndi method:
+.B -d prndi <n>
+where <n> is the
+.B maximum
+interval length. The average interval length (using the prndi method) will be
+approximately the half of the maximum interval length.
+
+Usually you will not need to use the -d argument as it defaults to prndi with
+the maximum interval length that is possible for the specified plain file and
+cover file. This is the best setting.
+
+If you use
+.B -d cnsti
+(i.e. you omit the <n> argument), the maximum interval length for the cnsti
+method will be used. Using
+.B -d prndi
+is equal to the default.
+
+Note that the cnsti method is less secure so you should not use it.
+
+.TP
+.B "-v, --verbose"
+Display detailed information about the status of the embedding or extracting
+process.
+
+.TP
+.B "-q, --quiet"
+Supress messages and non-critical warnings.
+
+.TP
+.B "-f, --force"
+Always overwrite existing files.
 
 .TP
 .B "-e, --encryption"
@@ -154,56 +179,48 @@ header (i.e. has used the -H argument) then the receiver of the message must
 also use the -H argument with the extract command. Otherwise steghide will
 assume that the stego header is encrypted and will fail.
 
-.TP
-.B "-m, --mask"
-This argument is followed by a number which specifies an 8 bit mask that is used
-to hide data in the cover bytes. For every one in the mask a bit will be hidden
-at the position of this one, for zeros no bits are hidden. If the mask is for
-example 3 then data is embedded in the least significant and second least
-significant bit of the cover byte.
-
-The number can be specified as decimal ("17") as octal with a leading zero
-("021"), as hexadecimal with the 0x prefix ("0x11") or as binary with b or B as
-prefix ("b10001" or "B10001"). This notation for numbers can also be used for
-the -d argument.
-
-The default value is 1 which is pretty secure, you should not change it. Note
-that it can be very insecure to embed data in bits other than the least
-significant. You should only use this argument if you know exactly what you are
-doing.
-
-The -m argument can only be used with the embed command.
-
 .SH EXAMPLES
-To embed the file mysecret.txt in the wav file cover.wav and save the resulting
-stego file as stego.wav type:
+To embed the file secret.txt in the wav file cvr.wav and save the resulting
+stego file as stg.wav type:
 
-  steghide embed -pf mysecret.txt -cf cover.wav -sf stego.wav -p "a passphrase"
+  $ steghide embed -pf secret.txt -cf cvr.wav -sf stg.wav
+  Enter passhrase:
+  Re-Enter passphrase:
+  wrote stego file to "stg.wav".
 
 To extract this data again type:
 
-  steghide extract -sf stego.wav -p "a passphrase"
+  $ steghide extract -sf stg.wav
+  Enter passphrase:
+  wrote plain file to "secret.txt".
 
-When embedding data, the name of the original plain file is embedded too, so
-this command will create a file mysecret.txt in the current directory and write
-the embedded data to mysecret.txt.
+When embedding data, the name of the original plain file is embedded too: The
+extract command above will create a file secret.txt in the current directory
+and write the embedded data to secret.txt.
 
 You can override the embedded plain file name if you specify a -pf argument
 when extracting. The following command will put the embedded data into the file
 plain.txt:
 
-  steghide extract -sf stego.wav -pf plain.txt -p "a passphrase"
+  $ steghide extract -sf stg.wav -pf plain.txt
+  Enter passphrase:
+  wrote plain file to "plain.txt".
 
 If you are using a system that supports pipes you can pass data via
 standard input to steghide. In the following example data is compressed before
 it is (encrypted and) embedded:
 
-  gzip -c pln.txt | steghide embed -cf cvr.bmp -sf stg.bmp -pf - -p "This is another passphrase."
+  $ gzip -c pln.txt | steghide embed -cf cvr.bmp -sf stg.bmp -pf - -p "This is a passphrase."
+  wrote stego file to "stg.bmp".
 
 To extract (and view) the data from this file again, you could do something
 like this:
 
-  steghide extract -sf stg.bmp -pf - -p "This is another passphrase." | gunzip | less
+  $ steghide extract -sf stg.bmp -pf - -p "This is a passphrase." | gunzip | less
+
+If you pass data to steghide via standard input or from steghide to another
+program via standard output, you need to specify the passphrase on the command
+line with the -p argument (as shown in the two commands above).
 
 .SH AUTHOR
 Stefan Hetzl <shetzl@teleweb.at>

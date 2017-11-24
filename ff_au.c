@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -42,9 +42,7 @@ void au_readheaders (CVRFILE *file)
 		unsigned char *ptrunsupdata1 = NULL ;
 		int i = 0 ;
 
-		if ((file->unsupdata1 = malloc (file->unsupdata1len)) == NULL) {
-			perr (ERR_MEMALLOC) ;
-		}
+		file->unsupdata1 = s_malloc (file->unsupdata1len) ;
 
 		ptrunsupdata1 = file->unsupdata1 ;
 		for (i = 0 ; i < file->unsupdata1len ; i++) {
@@ -53,11 +51,11 @@ void au_readheaders (CVRFILE *file)
 	}
 		
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_CVRREAD) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while reading the au headers from standard input.") ;
 		}
-		else if (args_action == ACTN_EXTRACT) {
-			perr (ERR_STGREAD) ;
+		else {
+			exit_err ("an error occured while reading the au headers from the file \"%s\".", file->filename) ;
 		}
 	}
 
@@ -86,11 +84,11 @@ void au_writeheaders (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_STGWRITE) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while writing the au headers to standard output.") ;
 		}
 		else {
-			assert (0) ;
+			exit_err ("an error occured while writing the au headers to the file \"%s\".", file->filename) ;
 		}
 	}
 
@@ -108,11 +106,11 @@ void au_readfile (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_CVRREAD) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while reading the audio data from standard input.") ;
 		}
-		else if (args_action == ACTN_EXTRACT) {
-			perr (ERR_STGREAD) ;
+		else {
+			exit_err ("an error occured while reading the audio data from the file \"%s\".", file->filename) ;
 		}
 	}
 
@@ -132,11 +130,11 @@ void au_writefile (CVRFILE *file)
 	}
 
 	if (ferror (file->stream)) {
-		if (args_action == ACTN_EMBED) {
-			perr (ERR_STGWRITE) ;
+		if (file->filename == NULL) {
+			exit_err ("an error occured while writing the audio data to standard output.") ;
 		}
 		else {
-			assert (0) ;
+			exit_err ("an error occured while writing the audio data to the file \"%s\".", file->filename) ;
 		}
 	}
 

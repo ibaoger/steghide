@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -23,15 +23,28 @@
 
 #include <stdio.h>
 
+#include <termios.h>
+
 #define CHILD_ARGCMAX	20
 #define CHILD_ARGLENMAX 512
+
+#define PP_DOUBLECHECK		1
+#define PP_NODOUBLECHECK	0
 
 /* function prototypes */
 void srnd (unsigned long seed) ;
 int rnd (unsigned long max) ;
-unsigned long readnum (char *s) ;
 char *stripdir (char *filename) ;
 void swap (unsigned long *x, unsigned long *y) ;
+char *get_passphrase (int doublecheck) ;
+struct termios termios_echo_off (void) ;
+struct termios termios_singlekey_on (void) ;
+void termios_reset (struct termios attr) ;
+int fileexists (char *filename) ;
+unsigned long readnum (char *s) ;
+void *s_malloc (size_t size) ;
+void *s_calloc (size_t nmemb, size_t size) ;
+void *s_realloc (void *ptr, size_t size) ;
 int read16_le (FILE *file) ;
 int read16_be (FILE *file) ;
 unsigned long read32_le (FILE *file) ;

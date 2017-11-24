@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.1 - a steganography program
+ * steghide 0.4.2 - a steganography program
  * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -21,9 +21,11 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <termios.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "crypto.h"
 #include "support.h"
 #include "msg.h"
 
@@ -72,6 +74,111 @@ unsigned long readnum (char *s)
 	return retval ;
 }
 
+char *get_passphrase (int doublecheck)
+{
+	struct termios oldattr ;
+	char *p1, *p2 ;
+	int i = 0 ;
+	int c = '\n' ;
+
+	p1 = s_malloc (PASSPHRASE_MAXLEN) ;
+	p2 = s_malloc (PASSPHRASE_MAXLEN) ;
+
+	fprintf (stderr, "Enter passphrase: ") ;
+	oldattr = termios_echo_off () ;
+	while ((c = getchar ()) != '\n') {
+		if (i == PASSPHRASE_MAXLEN) {
+			exit_err ("the maximum length of the passphrase is %d characters.", PASSPHRASE_MAXLEN) ;
+		}
+		p1[i++] = c ;
+	}
+	p1[i] = '\0' ;
+	termios_reset (oldattr) ;
+	printf ("\n") ;
+
+	if (doublecheck == PP_DOUBLECHECK) {
+		fprintf (stderr, "Re-Enter passphrase: ") ;
+		oldattr = termios_echo_off () ;
+		i = 0 ;
+		while ((c = getchar ()) != '\n') {
+			if (i == PASSPHRASE_MAXLEN) {
+				exit_err ("the maximum length of the passphrase is %d characters.", PASSPHRASE_MAXLEN) ;
+			}
+			p2[i++] = c ;
+		}
+		p2[i] = '\0' ;
+		termios_reset (oldattr) ;
+		printf ("\n") ;
+
+		if (strcmp (p1, p2) != 0) {
+			exit_err ("the passphrases do not match.") ;
+		}
+	}
+
+	return p1 ;
+}
+
+struct termios termios_echo_off (void)
+{
+	struct termios attr, retval ;
+
+	if ((tcgetattr (STDIN_FILENO, &attr)) != 0) {
+		exit_err ("could not get terminal attributes.") ;
+	}
+	retval = attr ;
+
+	attr.c_lflag &= ~ECHO ;
+
+	if ((tcsetattr (STDIN_FILENO, TCSAFLUSH, &attr)) != 0) {
+		exit_err ("could not set terminal attributes.") ;
+	}
+
+	return retval ;
+}
+
+struct termios termios_singlekey_on (void)
+{
+	struct termios attr, retval ;
+
+	if ((tcgetattr (STDIN_FILENO, &attr)) != 0) {
+		exit_err ("could not get terminal attributes.") ;
+	}
+	retval = attr ;
+
+	attr.c_lflag &= ~ICANON ;
+	attr.c_cc[VTIME] = 0 ;
+	attr.c_cc[VMIN] = 1 ;
+
+	if ((tcsetattr (STDIN_FILENO, TCSAFLUSH, &attr)) != 0) {
+		exit_err ("could not set terminal attributes.") ;
+	}
+
+	return retval ;
+}
+
+void termios_reset (struct termios attr)
+{
+	if ((tcsetattr (STDIN_FILENO, TCSANOW, &attr)) != 0) {
+		exit_err ("could not set terminal attributes.") ;
+	}
+}
+
+int fileexists (char *filename)
+{
+    FILE *fd = NULL ;
+    int retval = 0 ;
+
+    if ((fd = fopen (filename, "r")) == NULL) {
+        retval = 0 ;
+    }
+    else {
+        retval = 1 ;
+        fclose (fd) ;
+    }
+
+    return retval ;
+}
+
 void swap (unsigned long *x, unsigned long *y)
 {
 	unsigned long t ;
@@ -92,13 +199,44 @@ char *stripdir (char *filename)
 	}
 	start = i + 1 ;
 
-	if ((retval = malloc (end - start + 2)) == NULL) {
-		perr (ERR_MEMALLOC) ;
-	}
+	retval = s_malloc (end - start + 2) ;
 
 	j = 0 ;
 	for (i = start ; i <= end ; i++, j++) {
 		retval[j] = filename [i] ;
+	}
+
+	return retval ;
+}
+
+void *s_malloc (size_t size)
+{
+	void *retval = NULL ;
+
+	if ((retval = malloc (size)) == NULL) {
+		exit_err ("could not allocate memory.") ;
+	}
+
+	return retval ;
+}
+
+void *s_calloc (size_t nmemb, size_t size)
+{
+	void *retval = NULL ;
+
+	if ((retval = calloc (nmemb, size)) == NULL) {
+		exit_err ("could not allocate memory.") ;
+	}
+
+	return retval ;
+}
+
+void *s_realloc (void *ptr, size_t size)
+{
+	void *retval = NULL ;
+
+	if ((retval = realloc (ptr, size)) == NULL) {
+		exit_err ("could not reallocate memory.") ;
 	}
 
 	return retval ;
