@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,7 +23,9 @@
 
 #define SIZE_BLOWFISHKEY	16
 
-unsigned long get32hash (char *passphrase) ;
+unsigned long getseed (char *passphrase) ;
+void *getcrc32 (PLNFILE *plnfile) ;
+int checkcrc32 (PLNFILE *plnfile, void *crc32) ;
 void *getblowfishkey (char *passphrase) ;
 
 #endif

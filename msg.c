@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,12 +28,27 @@
 #include "support.h"
 #include "main.h"
 
-void pmsg (char *fmt, ...)
+void pverbose (char *fmt, ...)
 {
-	if (!args_quiet) {
+	if (args.verbosity.value == ARGS_VERBOSITY_VERBOSE) {
 		va_list ap ;
 
-		va_start(ap, fmt) ;
+		va_start (ap, fmt) ;
+		vfprintf (stderr, fmt, ap) ;
+		va_end (ap) ;
+
+		putc ('\n', stderr) ;
+	}
+
+	return ;
+}
+
+void pmsg (char *fmt, ...)
+{
+	if (args.verbosity.value != ARGS_VERBOSITY_QUIET) {
+		va_list ap ;
+
+		va_start (ap, fmt) ;
 		vfprintf (stderr, fmt, ap) ;
 		va_end (ap) ;
 
@@ -68,17 +83,15 @@ int pquestion (char *fmt, ...)
 
 void pwarn (char *fmt, ...)
 {
-	if (!args_quiet) {
-		va_list ap ;
+	va_list ap ;
 
-		fprintf (stderr, "%s: warning: ", PROGNAME) ;
+	fprintf (stderr, "%s: warning: ", PROGNAME) ;
 
-		va_start(ap, fmt) ;
-		vfprintf (stderr, fmt, ap) ;
-		va_end (ap) ;
+	va_start(ap, fmt) ;
+	vfprintf (stderr, fmt, ap) ;
+	va_end (ap) ;
 
-		putc ('\n', stderr) ;
-	}
+	putc ('\n', stderr) ;
 
 	return ;
 }

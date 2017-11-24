@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -100,6 +100,8 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	unsigned char IV[BLOCKSIZE_BLOWFISH] ;
 	int i = 0, err = -1 ;
 
+	pverbose ("encrypting plain data.") ;
+
 	result = createbuflist () ;
 	for (i = 0 ; i < BLOCKSIZE_BLOWFISH ; i++) {
 		IV[i] = (unsigned char) (256.0 * rand() / (RAND_MAX + 1.0)) ;
@@ -158,6 +160,8 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	unsigned char IV[BLOCKSIZE_BLOWFISH], buf[BLOCKSIZE_BLOWFISH] ;
 	unsigned long plnpos = 0, bufpos = 0 ;
 	int i = 0, blocknum = 0, err = -1 ;
+
+	pverbose ("decrypting plain data.") ;
 
 	assert (buflength (plnfile->plnbuflhead) % BLOCKSIZE_BLOWFISH == 0) ;
 

@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,7 +47,7 @@ typedef union union_DMTDINFO {
 /* stego header structure
    this structure describes the plaindata and how it is embedded */
 typedef struct struct_STEGOHEADER {
-	/* length of plain data (as embedded) in bytes */
+	/* length of plain data (before encryption with name and crc) in bytes */
 	unsigned long	nbytesplain ;
 
 	/* distribution method (how to calculate positions of secret bits) */
@@ -65,12 +65,8 @@ typedef struct struct_STEGOHEADER {
 	/* compression - NOT YET IMPLEMENTED */
 	unsigned int	compression ;
 
-	/* checksum - NOT YET IMPLEMENTED */
+	/* checksum */
 	unsigned int	checksum ;
-
-	/* the plain file name is not embedded together with the other fields of
-	   the stego header, it is embedded as start of the plain data - see embed/extractdata */
-	char			*plnfilename ;
 } STEGOHEADER ;
 
 /* size of stego header and components when embedded in stego file */
@@ -114,7 +110,8 @@ typedef struct struct_STEGOHEADER {
 #define COMPR_NONE	0
 
 /* checksum constants */
-#define CKSUM_NONE	0
+#define CHECKSUM_NONE	0
+#define CHECKSUM_CRC32	1
 
 /* max len for plain file name */
 #define PLNFILENAME_MAXLEN 255
@@ -131,7 +128,7 @@ void extractsthdr (BUFFER *stgbuflhead, int dmtd, DMTDINFO dmtdinfo, int enc, ch
 void dmtd_reset (unsigned int dmtd, DMTDINFO dmtdinfo, unsigned long resetpos) ;
 unsigned long dmtd_nextpos (void) ;
 #endif
-unsigned long calc_ubfirstplnpos (int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase) ;
+unsigned long calc_ubfirstplnpos (int dmtd, DMTDINFO dmtdinfo, int enc, unsigned long nbytesplain) ;
 void setmaxilen (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos) ;
 
 #endif /* ndef SH_STEGANO_H */

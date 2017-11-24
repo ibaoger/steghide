@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,6 +21,7 @@
 #ifndef SH_MSG_H
 #define SH_MSG_H
 
+void pverbose (char *fmt, ...) ;
 void pmsg (char *fmt, ...) ;
 int pquestion (char *fmt, ...) ;
 void pwarn (char *fmt, ...) ;

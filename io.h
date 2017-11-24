@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.2 - a steganography program
- * Copyright (C) 2001 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.4.3 - a steganography program
+ * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,6 +20,8 @@
 
 #ifndef SH_IO_H
 #define SH_IO_H
+
+#include <stdio.h>
 
 /*** au file format ***/
 typedef struct struct_AUHEADERS {
@@ -149,15 +151,15 @@ typedef struct struct_PLNFILE {
 
 /* general io function prototypes */
 void readheaders (CVRFILE *file) ;
-CVRFILE *createstgfile(CVRFILE *cvrfile, const char *stgfilename) ;
+CVRFILE *createstgfile(CVRFILE *cvrfile, char *stgfilename) ;
 PLNFILE *createplnfile(void) ;
 void assemble_plndata (PLNFILE *plnfile) ;
 void deassemble_plndata (PLNFILE *plnfile) ;
 void cleanupcvrfile(CVRFILE *cvrfile, int freesubstructs) ;
 void cleanupplnfile(PLNFILE *plnfile) ;
-CVRFILE *readcvrfile(const char *filename) ;
-void writecvrfile(CVRFILE *cvrfile) ;
-PLNFILE *readplnfile(const char *filename) ;
+CVRFILE *readcvrfile(char *filename) ;
+void writestgfile(CVRFILE *cvrfile) ;
+PLNFILE *readplnfile(char *filename) ;
 void writeplnfile(PLNFILE *plnfile) ;
 
 /* au file format function prototypes */
