@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -28,7 +28,9 @@
 #include <libintl.h>
 #define _(S) gettext (S)
 
+#include "arguments.h"
 #include "crypto.h"
+#include "error.h"
 #include "support.h"
 #include "msg.h"
 
@@ -77,21 +79,21 @@ unsigned long readnum (char *s)
 	return retval ;
 }
 
-char *get_passphrase (int doublecheck)
+char *get_passphrase (bool doublecheck)
 {
 	struct termios oldattr ;
 	char *p1, *p2 ;
 	int i = 0 ;
 	int c = '\n' ;
 
-	p1 = s_malloc (PASSPHRASE_MAXLEN) ;
-	p2 = s_malloc (PASSPHRASE_MAXLEN) ;
+	p1 = (char *) s_malloc (PASSPHRASE_MAXLEN) ;
+	p2 = (char *) s_malloc (PASSPHRASE_MAXLEN) ;
 
 	fprintf (stderr, _("Enter passphrase: ")) ;
 	oldattr = termios_echo_off () ;
 	while ((c = getchar ()) != '\n') {
 		if (i == PASSPHRASE_MAXLEN) {
-			exit_err (_("the maximum length of the passphrase is %d characters."), PASSPHRASE_MAXLEN) ;
+			throw SteghideError (_("the maximum length of the passphrase is %d characters."), PASSPHRASE_MAXLEN) ;
 		}
 		p1[i++] = c ;
 	}
@@ -99,13 +101,13 @@ char *get_passphrase (int doublecheck)
 	termios_reset (oldattr) ;
 	printf ("\n") ;
 
-	if (doublecheck == PP_DOUBLECHECK) {
+	if (doublecheck) {
 		fprintf (stderr, _("Re-Enter passphrase: ")) ;
 		oldattr = termios_echo_off () ;
 		i = 0 ;
 		while ((c = getchar ()) != '\n') {
 			if (i == PASSPHRASE_MAXLEN) {
-				exit_err (_("the maximum length of the passphrase is %d characters."), PASSPHRASE_MAXLEN) ;
+				throw SteghideError (_("the maximum length of the passphrase is %d characters."), PASSPHRASE_MAXLEN) ;
 			}
 			p2[i++] = c ;
 		}
@@ -114,7 +116,7 @@ char *get_passphrase (int doublecheck)
 		printf ("\n") ;
 
 		if (strcmp (p1, p2) != 0) {
-			exit_err (_("the passphrases do not match.")) ;
+			throw SteghideError (_("the passphrases do not match.")) ;
 		}
 	}
 
@@ -126,14 +128,14 @@ struct termios termios_echo_off (void)
 	struct termios attr, retval ;
 
 	if ((tcgetattr (STDIN_FILENO, &attr)) != 0) {
-		exit_err (_("could not get terminal attributes.")) ;
+		throw SteghideError (_("could not get terminal attributes.")) ;
 	}
 	retval = attr ;
 
 	attr.c_lflag &= ~ECHO ;
 
 	if ((tcsetattr (STDIN_FILENO, TCSAFLUSH, &attr)) != 0) {
-		exit_err (_("could not set terminal attributes.")) ;
+		throw SteghideError (_("could not set terminal attributes.")) ;
 	}
 
 	return retval ;
@@ -144,7 +146,7 @@ struct termios termios_singlekey_on (void)
 	struct termios attr, retval ;
 
 	if ((tcgetattr (STDIN_FILENO, &attr)) != 0) {
-		exit_err (_("could not get terminal attributes.")) ;
+		throw SteghideError (_("could not get terminal attributes.")) ;
 	}
 	retval = attr ;
 
@@ -153,7 +155,7 @@ struct termios termios_singlekey_on (void)
 	attr.c_cc[VMIN] = 1 ;
 
 	if ((tcsetattr (STDIN_FILENO, TCSAFLUSH, &attr)) != 0) {
-		exit_err (_("could not set terminal attributes.")) ;
+		throw SteghideError (_("could not set terminal attributes.")) ;
 	}
 
 	return retval ;
@@ -162,7 +164,7 @@ struct termios termios_singlekey_on (void)
 void termios_reset (struct termios attr)
 {
 	if ((tcsetattr (STDIN_FILENO, TCSANOW, &attr)) != 0) {
-		exit_err (_("could not set terminal attributes.")) ;
+		throw SteghideError (_("could not set terminal attributes.")) ;
 	}
 }
 
@@ -191,7 +193,7 @@ void swap (unsigned long *x, unsigned long *y)
 	*y = t ;
 }
 
-char *stripdir (char *filename)
+char *stripdir (const char *filename)
 {
 	int i = 0, j = 0, start = 0, end = 0 ;
 	char *retval = NULL ;
@@ -202,12 +204,13 @@ char *stripdir (char *filename)
 	}
 	start = i + 1 ;
 
-	retval = s_malloc (end - start + 2) ;
+	retval = (char *) s_malloc (end - start + 2) ;
 
 	j = 0 ;
 	for (i = start ; i <= end ; i++, j++) {
 		retval[j] = filename [i] ;
 	}
+	retval[j] = '\0' ;
 
 	return retval ;
 }
@@ -217,7 +220,7 @@ void *s_malloc (size_t size)
 	void *retval = NULL ;
 
 	if ((retval = malloc (size)) == NULL) {
-		exit_err (_("could not allocate memory.")) ;
+		throw SteghideError (_("could not allocate memory.")) ;
 	}
 
 	return retval ;
@@ -228,7 +231,7 @@ void *s_calloc (size_t nmemb, size_t size)
 	void *retval = NULL ;
 
 	if ((retval = calloc (nmemb, size)) == NULL) {
-		exit_err (_("could not allocate memory.")) ;
+		throw SteghideError (_("could not allocate memory.")) ;
 	}
 
 	return retval ;
@@ -239,82 +242,10 @@ void *s_realloc (void *ptr, size_t size)
 	void *retval = NULL ;
 
 	if ((retval = realloc (ptr, size)) == NULL) {
-		exit_err (_("could not reallocate memory.")) ;
+		throw SteghideError (_("could not reallocate memory.")) ;
 	}
 
 	return retval ;
-}
-
-int read16_le (FILE *file)
-{
-	int bytes[2] ;
-
-	bytes[0] = getc (file) ;
-	bytes[1] = getc (file) ;
-
-	return ((bytes[1] << 8) | bytes[0]) ;
-}
-
-int read16_be (FILE *file)
-{
-	int bytes[2] ;
-
-	bytes[0] = getc (file) ;
-	bytes[1] = getc (file) ;
-
-	return ((bytes[0] << 8) | bytes[1]) ;
-}
-
-unsigned long read32_le (FILE *file)
-{
-	int bytes[4] ;
-
-	bytes[0] = getc (file) ;
-	bytes[1] = getc (file) ;
-	bytes[2] = getc (file) ;
-	bytes[3] = getc (file) ;
-
-	return ((bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0]) ;
-}
-
-unsigned long read32_be (FILE *file)
-{
-	int bytes[4] ;
-
-	bytes[0] = getc (file) ;
-	bytes[1] = getc (file) ;
-	bytes[2] = getc (file) ;
-	bytes[3] = getc (file) ;
-
-	return ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) ;
-}
-
-void write16_le (FILE *file, int val)
-{
-	putc (val & 0xFF, file) ;
-	putc ((val >> 8) & 0xFF, file) ;
-}
-
-void write16_be (FILE *file, int val)
-{
-	putc ((val >> 8) & 0xFF, file) ;
-	putc (val & 0xFF, file) ;
-}
-
-void write32_le (FILE *file, unsigned long val)
-{
-	putc (val & 0xFF, file) ;
-	putc ((val >> 8) & 0xFF, file) ;
-	putc ((val >> 16) & 0xFF, file) ;
-	putc ((val >> 24) & 0xFF, file) ;
-}
-
-void write32_be (FILE *file, unsigned long val)
-{
-	putc ((val >> 24) & 0xFF, file) ;
-	putc ((val >> 16) & 0xFF, file) ;
-	putc ((val >> 8) & 0xFF, file) ;
-	putc (val & 0xFF, file) ;
 }
 
 void cp32ul2uc_be (unsigned char *dest, unsigned long src)
@@ -353,7 +284,7 @@ unsigned int cp_bits_to_buf_le (void *buf, unsigned int bufbitpos, unsigned long
 {
 	unsigned int curbit = 0 ;
 	unsigned int valbitpos = 0 ;
-	unsigned char *dest = buf ;
+	unsigned char *dest = (unsigned char *) buf ;
 
 	for (valbitpos = 0 ; valbitpos < val_nbits ; valbitpos++) {
 		curbit = ((1 << valbitpos) & val) >> valbitpos ;
@@ -368,7 +299,7 @@ unsigned int cp_bits_from_buf_le (void *buf, unsigned int bufbitpos, unsigned lo
 {
 	unsigned int curbit = 0 ;
 	unsigned int valbitpos = 0 ;
-	unsigned char *src = buf ;
+	unsigned char *src = (unsigned char *) buf ;
 
 	*val = 0 ;
 	for (valbitpos = 0 ; valbitpos < val_nbits ; valbitpos++) {
@@ -396,4 +327,39 @@ unsigned int nbits (unsigned long x)
 	}
 
 	return n ;
+}
+
+bool stdin_isused (void)
+{
+	bool retval = false ;
+
+	if (args->command.getValue() == EMBED &&
+		(args->plnfn.getValue() == "" ||
+		args->cvrfn.getValue() == "")) {
+		retval = true ;
+	}
+	if (args->command.getValue() == EXTRACT &&
+		args->stgfn.getValue() == "") {
+		retval = true ;
+	}
+
+	return retval ;
+}
+
+void checkforce (const char *filename)
+{
+	if (!args->force.getValue()) {
+		if (fileexists ((char *) filename)) {
+			if (stdin_isused()) {
+				throw SteghideError (_("the file \"%s\" does already exist."), filename) ;
+			}
+			else {
+				Question q (_("the file \"%s\" does already exist. overwrite ?"), filename) ;
+				q.printMessage() ;
+				if (!q.getAnswer()) {
+					throw SteghideError (_("did not write to file \"%s\"."), filename) ;
+				}
+			}
+		}
+	}
 }

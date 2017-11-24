@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -21,10 +21,79 @@
 #ifndef SH_MSG_H
 #define SH_MSG_H
 
-void pverbose (char *fmt, ...) ;
-void pmsg (char *fmt, ...) ;
-int pquestion (char *fmt, ...) ;
-void pwarn (char *fmt, ...) ;
-void exit_err (char *fmt, ...) ;
+#include <cstdarg>
+#include <string>
+
+class MessageBase {
+	public:
+	MessageBase (void) ;
+	MessageBase (string msg) ;
+	MessageBase (const char *msgfmt, ...) ;
+	virtual ~MessageBase (void) ;
+
+	string getMessage (void) ;
+	void setMessage (string msg) ;
+	void setMessage (const char *msgfmt, ...) ;
+	virtual void printMessage (void) = 0 ;
+
+	protected:
+	static const unsigned int MsgMaxSize = 512 ;
+
+	string compose (const char *msgfmt, ...) ;
+	string vcompose (const char *msgfmt, va_list ap) ;
+
+	private:
+	string message ;
+} ;
+
+class Message : public MessageBase {
+	public:
+	Message (void) : MessageBase() {} ;
+	Message (string msg) : MessageBase (msg) {} ;
+	Message (const char *msgfmt, ...) ;
+
+	void printMessage (void) ;
+} ;
+
+class VerboseMessage : public MessageBase {
+	public:
+	VerboseMessage (void) : MessageBase() {} ;
+	VerboseMessage (string msg) : MessageBase (msg) {} ;
+	VerboseMessage (const char *msgfmt, ...) ;
+
+	void printMessage (void) ;
+} ;
+
+class Warning : public MessageBase {
+	public:
+	Warning (void) : MessageBase() {} ;
+	Warning (string msg) : MessageBase (msg) {} ;
+	Warning (const char *msgfmt, ...) ;
+
+	void printMessage (void) ;
+} ;
+
+class CriticalWarning : public MessageBase {
+	public:
+	CriticalWarning (void) : MessageBase() {} ;
+	CriticalWarning (string msg) : MessageBase (msg) {} ;
+	CriticalWarning (const char *msgfmt, ...) ;
+
+	void printMessage (void) ;
+} ;
+
+class Question : public MessageBase {
+	public:
+	Question (void) ;
+	Question (string msg) ;
+	Question (const char *msgfmt, ...) ;
+
+	void printMessage (void) ;
+	bool getAnswer (void) ;
+
+	private:
+	string yeschar ;
+	string nochar ;
+} ;
 
 #endif	/* ndef SH_MSG_H */

@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -22,6 +22,7 @@
 #define SH_STEGANO_H
 
 #include "bufmanag.h"
+#include "cvrstgfile.h"
 #include "crypto.h"
 
 /* stego header structure definition */
@@ -120,15 +121,13 @@ typedef struct struct_STEGOHEADER {
 extern STEGOHEADER sthdr ;
 
 /* function prototypes */
-void embeddata (BUFFER *cvrdata, unsigned long firstcvrpos, BUFFER *plndata) ;
-BUFFER *extractdata (BUFFER *stgdata, unsigned long firststgpos) ;
-void embedsthdr (BUFFER *cvrdata, int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase, unsigned long *firstplnpos) ;
-void extractsthdr (BUFFER *stgdata, int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase, unsigned long *firstplnpos) ;
-#ifdef DEBUG
+void embeddata (CvrStgFile *cvrstgfile, unsigned long firstcvrpos, PLNFILE *plnfile) ;
+BUFFER *extractdata (CvrStgFile *cvrstgfile, unsigned long firststgpos) ;
+void embedsthdr (CvrStgFile *cvrstgfile, int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase, unsigned long *firstplnpos) ;
+void extractsthdr (CvrStgFile *cvrstgfile, int dmtd, DMTDINFO dmtdinfo, int enc, char *passphrase, unsigned long *firstplnpos) ;
 void dmtd_reset (unsigned int dmtd, DMTDINFO dmtdinfo, unsigned long resetpos) ;
 unsigned long dmtd_nextpos (void) ;
-#endif
 unsigned long calc_ubfirstplnpos (int dmtd, DMTDINFO dmtdinfo, int enc, unsigned long nbytesplain) ;
 void setmaxilen (unsigned long cvrbytes, unsigned long plnbytes, unsigned long firstplnpos) ;
 
-#endif /* ndef SH_STEGANO_H */
+#endif // ndef SH_STEGANO_H

@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -21,6 +21,8 @@
 #ifndef SH_HASH_H
 #define SH_HASH_H
 
+#include "plnfile.h"
+
 #define SIZE_BLOWFISHKEY	16
 
 unsigned long getseed (char *passphrase) ;
@@ -28,4 +30,4 @@ void *getcrc32 (PLNFILE *plnfile) ;
 int checkcrc32 (PLNFILE *plnfile, void *crc32) ;
 void *getblowfishkey (char *passphrase) ;
 
-#endif
+#endif // ndef SH_HASH_H

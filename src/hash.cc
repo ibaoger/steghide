@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -25,8 +25,9 @@
 #define _(S) gettext (S)
 
 #include "bufmanag.h"
-#include "io.h"
+#include "error.h"
 #include "support.h"
+#include "plnfile.h"
 #include "msg.h"
 
 unsigned long getseed (char *passphrase)
@@ -38,10 +39,10 @@ unsigned long getseed (char *passphrase)
 	int i = 0 ;
 
 	if ((hashd = mhash_init (MHASH_MD5)) == MHASH_FAILED) {
-		exit_err (_("could not initialize libmhash MD5 algorithm.")) ;
+		throw SteghideError (_("could not initialize libmhash MD5 algorithm.")) ;
 	}
 	mhash (hashd, passphrase, strlen (passphrase)) ;
-	hash = mhash_end (hashd) ;
+	hash = (unsigned char *) mhash_end (hashd) ;
 
 	for (i = 0 ; i < 4 ; i++) {
 		tmp[i] = hash[0 + i] ^ hash[4 + i] ^ hash[8 + i] ^ hash[12 + i] ;
@@ -59,7 +60,7 @@ void *getcrc32 (PLNFILE *plnfile)
 	unsigned char c ;
 
 	if ((hashd = mhash_init (MHASH_CRC32)) == MHASH_FAILED) {
-		exit_err (_("could not initialize libmhash CRC32 algorithm.")) ;
+		throw SteghideError (_("could not initialize libmhash CRC32 algorithm.")) ;
 	}
 
 	n = plnfile->plndata->length ;
@@ -73,8 +74,8 @@ void *getcrc32 (PLNFILE *plnfile)
 
 int checkcrc32 (PLNFILE *plnfile, void *crc32)
 {
-	unsigned char *uc_crc32_1 = crc32 ;
-	unsigned char *uc_crc32_2 = getcrc32 (plnfile) ;
+	unsigned char *uc_crc32_1 = (unsigned char *) crc32 ;
+	unsigned char *uc_crc32_2 = (unsigned char *) getcrc32 (plnfile) ;
 	int i = 0, retval = 1 ;
 
 	for (i = 0 ; i < 4 ; i++) {
@@ -91,7 +92,7 @@ void *getblowfishkey (char *passphrase)
 	MHASH hashd ;
 
 	if ((hashd = mhash_init (MHASH_MD5)) == MHASH_FAILED) {
-		exit_err (_("could not initialize libmhash MD5 algorithm.")) ;
+		throw SteghideError (_("could not initialize libmhash MD5 algorithm.")) ;
 	}
 
 	mhash (hashd, passphrase, strlen (passphrase)) ;

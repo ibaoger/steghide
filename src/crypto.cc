@@ -1,5 +1,5 @@
 /*
- * steghide 0.4.5 - a steganography program
+ * steghide 0.4.6 - a steganography program
  * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
  *
  * This program is free software; you can redistribute it and/or
@@ -29,7 +29,9 @@
 #include <libintl.h>
 #define _(S) gettext (S)
 
+#include "arguments.h"
 #include "bufmanag.h"
+#include "error.h"
 #include "stegano.h"
 #include "crypto.h"
 #include "hash.h"
@@ -46,7 +48,7 @@ void encrypt_sthdr (void *buf, int buflen, char *passphrase)
 
 	assert (buflen % BLOCKSIZE_BLOWFISH == 0) ;
 
-	if (args.compatibility.value) {
+	if (args->compatibility.getValue()) {
 		cryptoalgo = CRYPTOALGO_STHDR_COMPAT ;
 	}
 	else {
@@ -54,22 +56,22 @@ void encrypt_sthdr (void *buf, int buflen, char *passphrase)
 	}
 
     if ((mcryptd = mcrypt_module_open (cryptoalgo, CRYPTOALGODIR, CRYPTOMODE_STHDR, CRYPTOMODEDIR)) == MCRYPT_FAILED) {
-		exit_err (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_STHDR) ;
+		throw SteghideError (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_STHDR) ;
     }
 
     key = getblowfishkey (passphrase) ;
 
     if ((err = mcrypt_generic_init (mcryptd, key, SIZE_BLOWFISHKEY, NULL)) < 0) {
 		mcrypt_perror (err) ;
-		exit_err (_("could not initialize libmcrypt encryption. see above error messages if any.")) ;
+		throw SteghideError (_("could not initialize libmcrypt encryption. see above error messages if any.")) ;
     }
 
     if (mcrypt_generic (mcryptd, buf, buflen) != 0) {
-		exit_err (_("could not encrypt stego header.")) ;
+		throw SteghideError (_("could not encrypt stego header.")) ;
     }
 
     if (mcrypt_generic_end (mcryptd) < 0) {
-		exit_err (_("could not finish encryption of stego header.")) ;
+		throw SteghideError (_("could not finish encryption of stego header.")) ;
     }
 }
 
@@ -82,7 +84,7 @@ void decrypt_sthdr (void *buf, int buflen, char *passphrase)
 
 	assert (buflen % BLOCKSIZE_BLOWFISH == 0) ;
 
-	if (args.compatibility.value) {
+	if (args->compatibility.getValue()) {
 		cryptoalgo = CRYPTOALGO_STHDR_COMPAT ;
 	}
 	else {
@@ -90,22 +92,22 @@ void decrypt_sthdr (void *buf, int buflen, char *passphrase)
 	}
 
     if ((mcryptd = mcrypt_module_open (cryptoalgo, CRYPTOALGODIR, CRYPTOMODE_STHDR, CRYPTOMODEDIR)) == MCRYPT_FAILED) {
-		exit_err (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_STHDR) ;
+		throw SteghideError (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_STHDR) ;
     }
 
     key = getblowfishkey (passphrase) ;
 
     if ((err = mcrypt_generic_init (mcryptd, key, SIZE_BLOWFISHKEY, NULL)) < 0) {
 		mcrypt_perror (err) ;
-		exit_err (_("could not initialize libmcrypt decryption. see above error messages if any.")) ;
+		throw SteghideError (_("could not initialize libmcrypt decryption. see above error messages if any.")) ;
     }
 
     if (mdecrypt_generic (mcryptd, buf, buflen) != 0) {
-		exit_err (_("could not decrypt stego header.")) ;
+		throw SteghideError (_("could not decrypt stego header.")) ;
     }
 
     if (mcrypt_generic_end (mcryptd) < 0) {
-		exit_err (_("could not finish decryption of stego header.")) ;
+		throw SteghideError (_("could not finish decryption of stego header.")) ;
     }
 }
 
@@ -120,7 +122,8 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	int i = 0, err = -1 ;
 	char *cryptoalgo = NULL ;
 
-	pverbose (_("encrypting plain data.")) ;
+	VerboseMessage v (_("encrypting plain data.")) ;
+	v.printMessage() ;
 
 	if (plnfile->plndata->length % BLOCKSIZE_BLOWFISH == 0) {
 		nblocks_src = plnfile->plndata->length / BLOCKSIZE_BLOWFISH ;
@@ -135,7 +138,7 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 		bufsetbyte (result, i, IV[i]) ;
 	}
 
-	if (args.compatibility.value) {
+	if (args->compatibility.getValue()) {
 		cryptoalgo = CRYPTOALGO_DATA_COMPAT ;
 	}
 	else {
@@ -143,14 +146,14 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	}
 
 	if ((mcryptd = mcrypt_module_open (cryptoalgo, CRYPTOALGODIR, CRYPTOMODE_DATA, CRYPTOMODEDIR)) == MCRYPT_FAILED) {
-		exit_err (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_DATA) ;
+		throw SteghideError (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_DATA) ;
 	}
 
 	key = getblowfishkey (passphrase) ;
 
 	if ((err = mcrypt_generic_init (mcryptd, key, SIZE_BLOWFISHKEY, IV)) < 0) {
 		mcrypt_perror (err) ;
-		exit_err (_("could not initialize libmcrypt encryption. see above error messages if any.")) ;
+		throw SteghideError (_("could not initialize libmcrypt encryption. see above error messages if any.")) ;
 	}
 
 	while (plnpos < plnfile->plndata->length) {
@@ -168,7 +171,7 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 		}
 
 		if (mcrypt_generic (mcryptd, buf, BLOCKSIZE_BLOWFISH) != 0) {
-			exit_err (_("could not encrypt plain data. failed at block number %lu"), blocknum) ;
+			throw SteghideError (_("could not encrypt plain data. failed at block number %lu"), blocknum) ;
 		}
 
 		for (i = 0 ; i < BLOCKSIZE_BLOWFISH ; i++) {
@@ -179,7 +182,7 @@ void encrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	}
 
 	if (mcrypt_generic_end (mcryptd) < 0) {
-		exit_err (_("could not finish encryption of plain data.")) ;
+		throw SteghideError (_("could not finish encryption of plain data.")) ;
 	}
 
 	buffree (plnfile->plndata) ;
@@ -196,7 +199,8 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	int i = 0, blocknum = 0, err = -1 ;
 	char *cryptoalgo = NULL ;
 
-	pverbose (_("decrypting plain data.")) ;
+	VerboseMessage v (_("decrypting plain data.")) ;
+	v.printMessage() ;
 
 	assert (plnfile->plndata->length % BLOCKSIZE_BLOWFISH == 0) ;
 
@@ -206,7 +210,7 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 		IV[plnpos] = bufgetbyte (plnfile->plndata, plnpos) ;
 	}
 
-	if (args.compatibility.value) {
+	if (args->compatibility.getValue()) {
 		cryptoalgo = CRYPTOALGO_DATA_COMPAT ;
 	}
 	else {
@@ -214,14 +218,14 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	}
 
 	if ((mcryptd = mcrypt_module_open (cryptoalgo, CRYPTOALGODIR, CRYPTOMODE_DATA, CRYPTOMODEDIR)) == MCRYPT_FAILED) {
-		exit_err (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_DATA) ;
+		throw SteghideError (_("could not open libmcrypt module \"%s\",\"%s\"."), cryptoalgo, CRYPTOMODE_DATA) ;
 	}
 
 	key = getblowfishkey (passphrase) ;
 
 	if ((err = mcrypt_generic_init (mcryptd, key, SIZE_BLOWFISHKEY, IV)) < 0) {
 		mcrypt_perror (err) ;
-		exit_err (_("could not initialize libmcrypt decryption. see above error messages if any.")) ;
+		throw SteghideError (_("could not initialize libmcrypt decryption. see above error messages if any.")) ;
 	}
 
 	while (plnpos < plnfile->plndata->length) {
@@ -231,7 +235,7 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 		}
 
 		if (mdecrypt_generic (mcryptd, buf, BLOCKSIZE_BLOWFISH) != 0) {
-			exit_err (_("could not decrypt plain data. failed at block number %ul"), blocknum) ;
+			throw SteghideError (_("could not decrypt plain data. failed at block number %ul"), blocknum) ;
 		}
 
 		for (i = 0 ; i < BLOCKSIZE_BLOWFISH ; i++) {
@@ -244,7 +248,7 @@ void decrypt_plnfile (PLNFILE *plnfile, char *passphrase)
 	}	
 
 	if (mcrypt_generic_end (mcryptd) < 0) {
-		exit_err (_("could not finish decryption of plain data.")) ;
+		throw SteghideError (_("could not finish decryption of plain data.")) ;
 	}
 	
 	buffree (plnfile->plndata) ;
