@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.6b - a steganography program
- * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.5.1 - a steganography program
+ * Copyright (C) 1999-2003 Stefan Hetzl <shetzl@chello.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,46 +20,35 @@
 
 #include <iostream>
 #include <string>
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
 
-#include <libintl.h>
-#define _(S) gettext (S)
-
+#include "BinaryIO.h"
+#include "common.h"
 #include "error.h"
-#include "main.h"
 
 //
-// class SteghideError
+// class ArgError
 //
-SteghideError::SteghideError (void)
-	: MessageBase(_("error, exiting. (no error message defined)"))
-{
-}
-
-SteghideError::SteghideError(string msg)
-	: MessageBase(msg)
-{
-}
-
-SteghideError::SteghideError (const char *msgfmt, ...)
-	: MessageBase()
+ArgError::ArgError (const char* msgfmt, ...)
+	: SteghideError()
 {
 	va_list ap ;
-	va_start (ap, msgfmt) ;
+	va_start (ap, msgfmt) ,
 	setMessage (vcompose (msgfmt, ap)) ;
 	va_end (ap) ;
 }
 
-void SteghideError::printMessage (void)
+void ArgError::printMessage () const
 {
-	cerr << PROGNAME << ": " << getMessage() << endl ;
+	SteghideError::printMessage() ;
+	std::cerr << "steghide: " << _("type \"steghide --help\" for help.") << std::endl ;
 }
 
 //
 // class BinaryInputError
 //
-BinaryInputError::BinaryInputError (string fn, FILE* s)
+BinaryInputError::BinaryInputError (std::string fn, FILE* s)
 	: SteghideError()
 {
 	if (feof (s)) {
@@ -97,7 +86,7 @@ void BinaryInputError::setType (BinaryInputError::TYPE t)
 //
 // class BinaryOutputError
 //
-BinaryOutputError::BinaryOutputError (string fn)
+BinaryOutputError::BinaryOutputError (std::string fn)
 	: SteghideError()
 {
 	if (fn == "") {
@@ -135,23 +124,40 @@ UnSupFileFormat::UnSupFileFormat (BinaryIO *io)
 }
 
 //
-// class CorruptJpegError
+// class NotImplementedError
 //
-CorruptJpegError::CorruptJpegError (BinaryIO *io, const char *msgfmt, ...)
+NotImplementedError::NotImplementedError (const char *msgfmt, ...)
 	: SteghideError()
 {
 	va_list ap ;
 	va_start (ap, msgfmt) ;
-	string auxmsg = vcompose (msgfmt, ap) ;
+	setMessage (vcompose (msgfmt, ap)) ;
 	va_end (ap) ;
+}
 
-	string mainmsg ;
-	if (io->is_std()) {
-		mainmsg = string (_("corrupt jpeg file on standard input:")) ;
-	}
-	else {
-		mainmsg = compose (_("corrupt jpeg file \"%s\":"), io->getName().c_str()) ;
-	}
+void NotImplementedError::printMessage () const
+{
+	SteghideError::printMessage() ;
+	printf (_("This feature is not (yet) available. Please let me (shetzl@chello.at) know\n"
+		"that you want to use this functionality to increase the chance that this will\n"
+		"be implemented in the near future. Steghide has to exit now. Sorry.\n")) ;
+}
 
-	setMessage(mainmsg + " " + auxmsg) ;
+//
+// class CorruptDataError
+//
+CorruptDataError::CorruptDataError (const char* msgfmt, ...)
+	: SteghideError()
+{
+	va_list ap ;
+	va_start (ap, msgfmt) ;
+	setMessage (vcompose (msgfmt, ap)) ;
+	va_end (ap) ;
+}
+
+void CorruptDataError::printMessage () const
+{
+	SteghideError::printMessage() ;
+	printf (_("Other possible reasons for this error are that the passphrase is wrong\n"
+		"or that there is no embedded data.\n")) ;
 }

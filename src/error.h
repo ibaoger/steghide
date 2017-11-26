@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.6b - a steganography program
- * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.5.1 - a steganography program
+ * Copyright (C) 1999-2003 Stefan Hetzl <shetzl@chello.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,23 +24,22 @@
 #include <cstdio>
 #include <string>
 
-#include "binaryio.h"
-#include "msg.h"
+#include "SteghideError.h"
 
-class SteghideError : public MessageBase {
+class BinaryIO ;
+
+class ArgError : public SteghideError {
 	public:
-	SteghideError (void) ;
-	SteghideError (string msg) ;
-	SteghideError (const char *msgfmt, ...) ;
+	ArgError (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;	
+	void printMessage (void) const ;
 } ;
 
 class BinaryInputError : public SteghideError {
 	public:
 	enum TYPE { FILE_ERR, FILE_EOF, STDIN_ERR, STDIN_EOF } ;
 
-	BinaryInputError (string fn, FILE* s) ;
+	BinaryInputError (std::string fn, FILE* s) ;
 
 	TYPE getType (void) ;
 
@@ -55,7 +54,7 @@ class BinaryOutputError : public SteghideError {
 	public:
 	enum TYPE { FILE_ERR, STDOUT_ERR } ;
 
-	BinaryOutputError (string fn) ;
+	BinaryOutputError (std::string fn) ;
 
 	TYPE getType (void) ;
 
@@ -71,8 +70,24 @@ class UnSupFileFormat : public SteghideError {
 	UnSupFileFormat (BinaryIO *io) ;
 } ;
 
-class CorruptJpegError : public SteghideError {
+class NotImplementedError : public SteghideError {
 	public:
-	CorruptJpegError (BinaryIO *io, const char *msgfmt, ...) ;	
+	NotImplementedError (const char* msgfmt, ...) ;
+
+	void printMessage (void) const ;
 } ;
+
+/**
+ * \class CorruptDataError
+ * \brief is thrown as exception when corrupt data is encountered during extraction
+ *
+ * A possible cause of this exception being thrown is a wrong password.
+ **/
+class CorruptDataError : public SteghideError {
+	public:
+	CorruptDataError (const char* msgfmt, ...) ;
+
+	void printMessage (void) const ;
+} ;
+
 #endif

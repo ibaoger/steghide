@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.6b - a steganography program
- * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.5.1 - a steganography program
+ * Copyright (C) 1999-2003 Stefan Hetzl <shetzl@chello.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,73 +27,96 @@
 class MessageBase {
 	public:
 	MessageBase (void) ;
-	MessageBase (string msg) ;
-	MessageBase (const char *msgfmt, ...) ;
-	virtual ~MessageBase (void) ;
+	MessageBase (std::string msg) ;
+	MessageBase (const char* msgfmt, ...) ;
+	virtual ~MessageBase() {} ;
 
-	string getMessage (void) ;
-	void setMessage (string msg) ;
+	const std::string& getMessage (void) const
+		{ return Message ; } ;
+
+	void setMessage (std::string msg)
+		{ Message = msg ; } ;
+
+	/**
+	 * toggle newline printing on/off
+	 * \param prnl wether to print a newline character after the message
+	 **/
+	void setNewline (bool prnl)
+		{ Newline = prnl ; } ;
+
+	/**
+	 * return either "\n" or "" depending on wether this message should be followed by a newline or not
+	 **/
+	const std::string getNewline (void) const
+		{ return (Newline ? "\n" : "") ; } ;
+
 	void setMessage (const char *msgfmt, ...) ;
-	virtual void printMessage (void) = 0 ;
+	virtual void printMessage (void) const = 0 ;
 
 	protected:
 	static const unsigned int MsgMaxSize = 512 ;
 
-	string compose (const char *msgfmt, ...) ;
-	string vcompose (const char *msgfmt, va_list ap) ;
+	std::string compose (const char *msgfmt, ...) const ;
+	std::string vcompose (const char *msgfmt, va_list ap) const ;
 
 	private:
-	string message ;
+	std::string Message ;
+	bool Newline ;
 } ;
 
 class Message : public MessageBase {
 	public:
 	Message (void) : MessageBase() {} ;
-	Message (string msg) : MessageBase (msg) {} ;
+	Message (std::string msg) : MessageBase (msg) {} ;
 	Message (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;
+	void printMessage (void) const ;
 } ;
 
 class VerboseMessage : public MessageBase {
 	public:
 	VerboseMessage (void) : MessageBase() {} ;
-	VerboseMessage (string msg) : MessageBase (msg) {} ;
+	VerboseMessage (std::string msg) : MessageBase (msg) {} ;
 	VerboseMessage (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;
+	void printMessage (void) const ;
 } ;
 
 class Warning : public MessageBase {
 	public:
 	Warning (void) : MessageBase() {} ;
-	Warning (string msg) : MessageBase (msg) {} ;
+	Warning (std::string msg) : MessageBase (msg) {} ;
 	Warning (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;
+	void printMessage (void) const ;
 } ;
 
 class CriticalWarning : public MessageBase {
 	public:
 	CriticalWarning (void) : MessageBase() {} ;
-	CriticalWarning (string msg) : MessageBase (msg) {} ;
+	CriticalWarning (std::string msg) : MessageBase (msg) {} ;
 	CriticalWarning (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;
+	void printMessage (void) const ;
 } ;
 
 class Question : public MessageBase {
 	public:
 	Question (void) ;
-	Question (string msg) ;
+	Question (std::string msg) ;
 	Question (const char *msgfmt, ...) ;
 
-	void printMessage (void) ;
+	void printMessage (void) const ;
+
+	/**
+	 * wait for the user to answer the question (should be printed before)
+	 * \return true iff the user answers with yes, i.e. presses the yeschar-key
+	 **/
 	bool getAnswer (void) ;
 
 	private:
-	string yeschar ;
-	string nochar ;
+	std::string yeschar ;
+	std::string nochar ;
 } ;
 
 #endif	/* ndef SH_MSG_H */

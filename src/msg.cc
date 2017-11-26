@@ -1,6 +1,6 @@
 /*
- * steghide 0.4.6b - a steganography program
- * Copyright (C) 2002 Stefan Hetzl <shetzl@teleweb.at>
+ * steghide 0.5.1 - a steganography program
+ * Copyright (C) 1999-2003 Stefan Hetzl <shetzl@chello.at>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,32 +18,28 @@
  *
  */
 
-#include <cassert>
 #include <cstdarg>
 #include <cstdio>
 #include <iostream>
+#include <string>
 
-#include <termios.h>
-
-#include <libintl.h>
-#define _(S) gettext (S)
-
-#include "arguments.h"
-#include "main.h"
+#include "common.h"
 #include "msg.h"
-#include "support.h"
+#include "Terminal.h"
 
 //
 // class MessageBase
 //
 MessageBase::MessageBase ()
 {
-	setMessage (_("__no_message_defined__")) ;
+	setMessage (std::string(_("__no_message_defined__"))) ;
+	setNewline (true) ;
 }
 
-MessageBase::MessageBase (string msg)
+MessageBase::MessageBase (std::string msg)
 {
 	setMessage (msg) ;
+	setNewline (true) ;
 }
 
 MessageBase::MessageBase (const char *msgfmt, ...)
@@ -52,20 +48,7 @@ MessageBase::MessageBase (const char *msgfmt, ...)
 	va_start (ap, msgfmt) ;
 	setMessage (msgfmt, ap) ;
 	va_end (ap) ;
-}
-
-MessageBase::~MessageBase ()
-{
-}
-
-string MessageBase::getMessage ()
-{
-	return message ;
-}
-
-void MessageBase::setMessage (string msg)
-{
-	message = msg ;
+	setNewline (true) ;
 }
 
 void MessageBase::setMessage (const char *msgfmt, ...)
@@ -76,20 +59,22 @@ void MessageBase::setMessage (const char *msgfmt, ...)
 	va_end (ap) ;
 }
 
-string MessageBase::compose (const char *msgfmt, ...)
+std::string MessageBase::compose (const char *msgfmt, ...) const
 {
 	va_list ap ;
 	va_start (ap, msgfmt) ;
-	string retval = vcompose (msgfmt, ap) ;
+	std::string retval = vcompose (msgfmt, ap) ;
 	va_end (ap) ;
 	return retval ;
 }
 
-string MessageBase::vcompose (const char *msgfmt, va_list ap)
+std::string MessageBase::vcompose (const char *msgfmt, va_list ap) const
 {
 	char *str = new char[MsgMaxSize] ;
 	vsnprintf (str, MsgMaxSize, msgfmt, ap) ;
-	return string (str) ;
+	std::string retval (str) ;
+	delete[] str ;
+	return retval ;
 }
 
 //
@@ -104,12 +89,11 @@ Message::Message (const char *msgfmt, ...)
 	va_end (ap) ;
 }
 
-void Message::printMessage ()
+void Message::printMessage () const
 {
-	if (args->verbosity.getValue() == NORMAL ||
-		args->verbosity.getValue() == VERBOSE) {
-
-		cerr << getMessage() << endl ;
+	if (Args.Verbosity.getValue() == NORMAL ||
+		Args.Verbosity.getValue() == VERBOSE) {
+		std::cerr << getMessage() << getNewline() ;
 	}
 }
 
@@ -123,12 +107,13 @@ VerboseMessage::VerboseMessage (const char *msgfmt, ...)
 	va_start (ap, msgfmt) ;
 	setMessage (vcompose (msgfmt, ap)) ;
 	va_end (ap) ;
+	setNewline (true) ;
 }
 
-void VerboseMessage::printMessage ()
+void VerboseMessage::printMessage () const
 {
-	if (args->verbosity.getValue() == VERBOSE) {
-		cerr << getMessage() << endl ;
+	if (Args.Verbosity.getValue() == VERBOSE) {
+		std::cerr << getMessage() << getNewline() ;
 	}
 }
 
@@ -144,12 +129,10 @@ Warning::Warning (const char *msgfmt, ...)
 	va_end (ap) ;
 }
 
-void Warning::printMessage ()
+void Warning::printMessage () const
 {
-	if (args->verbosity.getValue() == NORMAL ||
-		args->verbosity.getValue() == VERBOSE) {
-
-		cerr << PROGNAME << _(": warning: ") << getMessage() << endl ;
+	if (Args.Verbosity.getValue() != QUIET) {
+		std::cerr << "steghide: " << _("warning:") << " " << getMessage() << getNewline() ;
 	}
 }
 
@@ -165,9 +148,9 @@ CriticalWarning::CriticalWarning (const char *msgfmt, ...)
 	va_end (ap) ;
 }
 
-void CriticalWarning::printMessage ()
+void CriticalWarning::printMessage () const
 {
-	cerr << PROGNAME << _(": warning: ") << getMessage() << endl ;
+	std::cerr << "steghide: " << _("warning:") << " " << getMessage() << getNewline() ;
 }
 
 //
@@ -176,22 +159,22 @@ void CriticalWarning::printMessage ()
 Question::Question (void)
 	: MessageBase()
 {
-	yeschar = string (_("y")) ;
-	nochar = string (_("n")) ;
+	yeschar = std::string (_("y")) ;
+	nochar = std::string (_("n")) ;
 }
 
-Question::Question (string msg)
+Question::Question (std::string msg)
 	: MessageBase (msg)
 {
-	yeschar = string (_("y")) ;
-	nochar = string (_("n")) ;
+	yeschar = std::string (_("y")) ;
+	nochar = std::string (_("n")) ;
 }
 
 Question::Question (const char *msgfmt, ...)
 	: MessageBase()
 {
-	yeschar = string (_("y")) ;
-	nochar = string (_("n")) ;
+	yeschar = std::string (_("y")) ;
+	nochar = std::string (_("n")) ;
 
 	va_list ap ;
 	va_start (ap, msgfmt) ;
@@ -199,24 +182,41 @@ Question::Question (const char *msgfmt, ...)
 	va_end (ap) ;
 }
 
-void Question::printMessage ()
+void Question::printMessage () const
 {
-	assert (!stdin_isused()) ;
-
-	cerr << getMessage() << " (" << yeschar << "/" << nochar << ") " ;
+#ifndef HAVE_TERMIOS_H
+	Warning w (_("unknown terminal. you might need to press <Enter> after answering.")) ;
+	w.printMessage() ;
+#endif
+	std::cerr << getMessage() << " (" << yeschar << "/" << nochar << ") " ;
 }
 
 bool Question::getAnswer ()
 {
-	assert (!stdin_isused()) ;
-
-	struct termios oldattr = termios_singlekey_on () ;
+	Terminal term ;
+	term.SingleKeyOn() ;
 	char input[2] ;
-	input[0] = cin.get() ;
+	input[0] = std::cin.get() ;
 	input[1] = '\0' ;
-	bool retval = (string (input) == yeschar) ;
-	termios_reset (oldattr) ;
+	bool retval = (std::string (input) == yeschar) ;
+	term.reset() ;
+	std::cerr << std::endl ;
 
-	cerr << endl ;
 	return retval ;
 }
+
+//
+// debugging output
+//
+#ifdef DEBUG
+void printDebug (unsigned short level, const char *msgfmt, ...)
+{
+	if (RUNDEBUGLEVEL(level)) {
+		va_list ap ;
+		va_start (ap, msgfmt) ;
+		vfprintf (stderr, msgfmt, ap) ;
+		va_end (ap) ;
+		fprintf (stderr, "\n") ;
+	}
+}
+#endif
