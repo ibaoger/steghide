@@ -23,6 +23,9 @@ large) cover file and embedding the (rather short) secret message into this
 file. The result is a innocuous looking file (the stego file) that contains
 the secret message.
 
+原理讲解:在原图像上找出一段可修改的数据区域，把水印数据转换为比特流，每个比特按顺序写入
+原图像的每个字节的最后一位，如果比特流写完，剩下的每个字节的最后一位置零；提取水印为逆向过程；
+
 Compilation and Installation :
 ==============================
 
